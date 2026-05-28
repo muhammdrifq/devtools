@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+DOMAIN=$1
+
+if [ -z "$DOMAIN" ]; then
+    echo "Usage: nginx-disable <domain>"
+    exit 1
+fi
+
+sudo rm -f "/etc/nginx/sites-enabled/${DOMAIN}.conf"
+
+sudo nginx -t && sudo systemctl reload nginx
+
+echo "Disabled: $DOMAIN"

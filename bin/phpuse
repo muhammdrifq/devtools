@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+VERSION=$1
+
+if [ -z "$VERSION" ]; then
+    echo "Usage: phpuse <version>"
+    exit 1
+fi
+
+if [ ! -f "$HOME/.phpx/versions/$VERSION" ]; then
+    echo "PHP version $VERSION is not registered."
+    exit 1
+fi
+
+echo "$VERSION" > "$HOME/.phpx/current"
+
+echo "Active PHP set to $VERSION"

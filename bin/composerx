@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+COMPOSER_BIN=$(which composer)
+
+if [ -z "$COMPOSER_BIN" ]; then
+    echo "Composer is not installed."
+    exit 1
+fi
+
+phpx "$COMPOSER_BIN" "$@"

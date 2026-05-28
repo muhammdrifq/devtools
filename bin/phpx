@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+
+PROJECT_DIR=$(pwd)
+
+get_default_version() {
+
+    if [ -f "$HOME/.phpx/current" ]; then
+        cat "$HOME/.phpx/current"
+        return
+    fi
+
+    echo ""
+}
+
+get_registered_versions() {
+
+    ls "$HOME/.phpx/versions" 2>/dev/null
+}
+
+detect_php_requirement() {
+
+    COMPOSER_FILE="$PROJECT_DIR/composer.json"
+
+    if [ ! -f "$COMPOSER_FILE" ]; then
+        return
+    fi
+
+    PHP_REQUIREMENT=$(grep '"php"' "$COMPOSER_FILE" | head -n 1 | sed -E 's/.*"php":[[:space:]]*"([^"]+)".*/\1/')
+
+    echo "$PHP_REQUIREMENT"
+}
+
+find_matching_version() {
+
+    REQUIREMENT=$1
+
+    for VERSION in $(get_registered_versions); do
+
+        if [[ "$REQUIREMENT" == *"$VERSION"* ]]; then
+            echo "$VERSION"
+            return
+        fi
+
+    done
+}
+
+PHP_REQUIREMENT=$(detect_php_requirement)
+
+if [ -n "$PHP_REQUIREMENT" ]; then
+
+    MATCHED_VERSION=$(find_matching_version "$PHP_REQUIREMENT")
+
+    if [ -n "$MATCHED_VERSION" ]; then
+
+        PHP_BIN=$(cat "$HOME/.phpx/versions/$MATCHED_VERSION")
+
+        exec "$PHP_BIN" "$@"
+    fi
+
+    echo ""
+    echo "Required PHP version not installed."
+    echo "Composer requires: $PHP_REQUIREMENT"
+    echo ""
+    echo "Installed versions:"
+    get_registered_versions
+    echo ""
+    echo "Install required PHP version first."
+    echo "Then register it using:"
+    echo ""
+    echo "phpadd <version>"
+    echo ""
+
+    exit 1
+fi
+
+DEFAULT_VERSION=$(get_default_version)
+
+if [ -n "$DEFAULT_VERSION" ]; then
+
+    PHP_BIN=$(cat "$HOME/.phpx/versions/$DEFAULT_VERSION" 2>/dev/null)
+
+    if [ -n "$PHP_BIN" ]; then
+        exec "$PHP_BIN" "$@"
+    fi
+fi
+
+echo "No PHP version available."
+exit 1

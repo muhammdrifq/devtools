@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+set -e
+
+INSTALL_DIR="$HOME/.local/bin"
+
+echo "Installing devtools..."
+echo ""
+
+mkdir -p "$INSTALL_DIR"
+
+cp -f bin/* "$INSTALL_DIR/"
+
+chmod +x "$INSTALL_DIR"/*
+
+if ! echo "$PATH" | grep -q "$HOME/.local/bin"; then
+
+    SHELL_NAME=$(basename "$SHELL")
+
+    if [ "$SHELL_NAME" = "zsh" ]; then
+        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.zshrc"
+        source "$HOME/.zshrc"
+    else
+        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
+        source "$HOME/.bashrc"
+    fi
+fi
+
+echo ""
+echo "Installation completed successfully"
+echo ""
+echo "Installed scripts:"
+ls "$INSTALL_DIR"

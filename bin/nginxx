@@ -1,0 +1,151 @@
+#!/usr/bin/env bash
+PROJECT_DIR=$(pwd)
+PROJECT_NAME=$(basename "$PROJECT_DIR")
+PARENT_NAME=$(basename "$(dirname "$PROJECT_DIR")")
+
+DEFAULT_DOMAIN="${PROJECT_NAME}.${PARENT_NAME}.local"
+
+read -p "Domain [$DEFAULT_DOMAIN]: " DOMAIN
+DOMAIN=${DOMAIN:-$DEFAULT_DOMAIN}
+
+read -p "Enable HTTPS redirect? (y/n): " ENABLE_SSL
+
+COMPOSER_FILE="$PROJECT_DIR/composer.json"
+
+if [ ! -f "$COMPOSER_FILE" ]; then
+    echo "composer.json not found"
+    exit 1
+fi
+
+# PHP_REQUIREMENT=$(grep '"php"' "$COMPOSER_FILE" | head -n 1 | sed -E 's/.*"php"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
+
+PHP_VERSION=$(grep '"php"' "$COMPOSER_FILE" \
+    | head -n 1 \
+    | grep -oE '[0-9]+\.[0-9]+' \
+    | head -n 1)
+
+if [ -z "$PHP_VERSION" ]; then
+    echo "Cannot detect PHP version"
+    exit 1
+fi
+
+if [ -z "$PHP_VERSION" ]; then
+    echo "Cannot detect PHP version"
+    exit 1
+fi
+
+PHP_FPM="/run/php/php${PHP_VERSION}-fpm.sock"
+
+if [ ! -S "$PHP_FPM" ]; then
+    echo "PHP-FPM socket not found: $PHP_FPM"
+    exit 1
+fi
+
+NGINX_CONF="/etc/nginx/sites-available/${DOMAIN}.conf"
+
+SSL_CERT_DIR="/etc/nginx/ssl/${DOMAIN}"
+SSL_CERT="$SSL_CERT_DIR/cert.pem"
+SSL_KEY="$SSL_CERT_DIR/key.pem"
+
+if [ "$ENABLE_SSL" = "y" ]; then
+
+    sudo mkdir -p "$SSL_CERT_DIR"
+
+    sudo openssl req -x509 -nodes -days 365 \
+        -newkey rsa:2048 \
+        -keyout "$SSL_KEY" \
+        -out "$SSL_CERT" \
+        -subj "/CN=$DOMAIN"
+fi
+
+if [ "$ENABLE_SSL" = "y" ]; then
+
+sudo tee "$NGINX_CONF" > /dev/null <<EOF
+
+server {
+    listen 80;
+    server_name $DOMAIN;
+    return 301 https://\$host\$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name $DOMAIN;
+    
+    root $PROJECT_DIR/public;
+    index index.php index.html;
+
+    ssl_certificate $SSL_CERT;
+    ssl_certificate_key $SSL_KEY;
+
+    location / {
+        try_files \$uri \$uri/ /index.php?\$query_string;
+    }
+    
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:$PHP_FPM;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+
+}
+EOF
+
+else
+
+sudo tee "$NGINX_CONF" > /dev/null <<EOF
+server {
+    listen 80;
+    server_name $DOMAIN;
+
+    root $PROJECT_DIR/public;
+    index index.php index.html;
+    
+    location / {
+        try_files \$uri \$uri/ /index.php?\$query_string;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:$PHP_FPM;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+}
+EOF
+
+fi
+
+if ! grep -q "$DOMAIN" /etc/hosts; then
+    echo "127.0.0.1 $DOMAIN" | sudo tee -a /etc/hosts > /dev/null
+fi
+
+sudo ln -sf "$NGINX_CONF" "/etc/nginx/sites-enabled/${DOMAIN}.conf"
+
+sudo nginx -t
+
+if [ $? -ne 0 ]; then
+    echo "Nginx config test failed"
+    
+    exit 1
+fi
+
+sudo systemctl reload nginx
+
+echo ""
+echo "Site created successfully"
+echo "Domain: $DOMAIN"
+echo "PHP Version: $PHP_VERSION"
+echo "PHP-FPM: $PHP_FPM"
+echo ""
+
+if [ "$ENABLE_SSL" = "y" ]; then
+    echo "URL: https://$DOMAIN"
+else
+    echo "URL: http://$DOMAIN"
+fi

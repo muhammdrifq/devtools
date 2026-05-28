@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+
+set -e
+
+PROJECT_DIR=$(pwd)
+
+echo "Granting permissions for:"
+echo "$PROJECT_DIR"
+echo ""
+
+if [ ! -d "$PROJECT_DIR" ]; then
+    echo "Invalid project directory"
+    exit 1
+fi
+
+if [ ! -f "$PROJECT_DIR/artisan" ]; then
+    echo "Laravel project not detected"
+    exit 1
+fi
+
+echo "Adding current user to www-data group..."
+sudo usermod -aG www-data "$USER"
+
+echo "Fixing ownership..."
+sudo chown -R "$USER":www-data "$PROJECT_DIR"
+
+echo "Fixing directory permissions..."
+sudo find "$PROJECT_DIR" -type d -exec chmod 755 {} \;
+
+echo "Fixing file permissions..."
+sudo find "$PROJECT_DIR" -type f -exec chmod 644 {} \;
+
+echo "Granting write permissions to Laravel directories..."
+sudo chmod -R 775 "$PROJECT_DIR/storage"
+sudo chmod -R 775 "$PROJECT_DIR/bootstrap/cache"
+
+echo "Fixing storage symlink permissions..."
+if [ -L "$PROJECT_DIR/public/storage" ]; then
+    sudo chmod o+x "$PROJECT_DIR"
+fi
+
+echo ""
+echo "Permission grant completed successfully"
+echo ""
+
+echo "Current user:"
+echo "$USER"
+
+echo ""
+echo "IMPORTANT:"
+echo "You may need to logout/login or reboot"
+echo "for new group permissions to apply."
