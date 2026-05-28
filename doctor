@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+
+echo "DevTools Doctor"
+echo "======================"
+echo ""
+
+check_command() {
+
+    if command -v "$1" >/dev/null 2>&1; then
+        echo "[OK] $1"
+    else
+        echo "[MISSING] $1"
+    fi
+}
+
+check_service() {
+
+    if systemctl is-active --quiet "$1"; then
+        echo "[RUNNING] $1"
+    else
+        echo "[STOPPED] $1"
+    fi
+}
+
+echo "Checking commands..."
+echo ""
+
+check_command php
+check_command composer
+check_command nginx
+check_command git
+check_command curl
+
+echo ""
+echo "Checking services..."
+echo ""
+
+PHP_VERSION=$(php -r "echo PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION;" 2>/dev/null)
+
+if [ -n "$PHP_VERSION" ]; then
+    check_service "php${PHP_VERSION}-fpm"
+fi
+
+check_service nginx
+
+echo ""
+echo "Checking paths..."
+echo ""
+
+if echo "$PATH" | grep -q "$HOME/.local/bin"; then
+    echo "[OK] ~/.local/bin exists in PATH"
+else
+    echo "[MISSING] ~/.local/bin not found in PATH"
+fi
+
+echo ""
+echo "Doctor completed"

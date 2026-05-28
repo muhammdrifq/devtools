@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+set -e
+
+REPO_DIR=$(cd "$(dirname "$0")" && pwd)
+
+echo "Updating DevTools..."
+echo ""
+
+cd "$REPO_DIR"
+
+git pull
+
+./install
+
+echo ""
+echo "Update completed successfully"

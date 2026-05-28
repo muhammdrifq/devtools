@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+echo "Uninstalling DevTools..."
+echo ""
+
+TOOLS=(
+    composerx
+    grantx
+    nginx-disable
+    nginx-enable
+    nginxx
+    phpadd
+    phpx
+    phpuse
+    doctor
+    update
+)
+
+for tool in "${TOOLS[@]}"
+do
+    rm -f "$HOME/.local/bin/$tool"
+    echo "Removed $tool"
+done
+
+echo ""
+echo "DevTools uninstalled"
